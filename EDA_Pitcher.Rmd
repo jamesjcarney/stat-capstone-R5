@@ -1,0 +1,102 @@
+---
+title: "Pitcher Analysis"
+author: "James Carney"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+
+```{r}
+## Get the Pitcher's pitches
+df_pitcher <- df %>%
+  filter(player_name == "Kirby, George") %>%
+  select(player_name, game_year, pitch_type, game_date, release_speed, 
+         release_spin_rate,  batter, pitcher,events, description, zone, 
+         game_type, stand, p_throws, home_team, away_team, balls, strikes, 
+         pfx_x, pfx_z, plate_x, plate_z, 
+         on_3b, on_2b, on_1b, outs_when_up, inning, inning_topbot,
+         release_extension, spin_axis)
+# Break into 2 years
+df_p_22 <- df_pitcher %>%
+  filter(game_year == 2022)
+df_p_23 <- df_pitcher %>%
+  filter(game_year == 2023)
+```
+
+
+```{r}
+df_pitcher$game_year <- as.factor(df_pitcher$game_year)
+
+## Break into pitches
+
+df_pitcher_p1 <- df_pitcher %>%
+  filter(pitch_type == "FF")
+
+df_pitcher_p1a <- df_pitcher %>%
+  filter(pitch_type == "SI")
+
+df_pitcher_p2 <- df_pitcher %>%
+  filter(pitch_type == "SL")
+
+df_pitcher_p2a <- df_pitcher %>%
+  filter(pitch_type == "CU")
+
+```
+
+
+
+```{r}
+df_pitcher_nc <- df_pitcher %>%
+  filter(pitch_type != 'FC') %>%
+  drop_na(release_spin_rate)
+
+
+## Plots By Pitch (aggregate by year)
+ggplot(df_pitcher_nc, aes(x=game_year, y = release_speed, fill = pitch_type)) +
+  geom_bar(position = 'dodge', stat = 'identity') + 
+ coord_cartesian(ylim=c(75, 105)) + 
+  labs(title = "velocity")
+
+ggplot(df_pitcher_nc, aes(x=game_year, y = release_spin_rate, fill = pitch_type)) +
+  geom_bar(position = 'dodge', stat = 'identity') + 
+ coord_cartesian(ylim=c(1000, 2900))+ 
+  labs(title = "spin rate")
+
+pitch_grouped <- df_pitcher_nc %>%
+  group_by(game_year, pitch_type) %>%
+  summarize(mean_v = mean(release_speed), mean_s = mean(release_spin_rate))
+
+pitch_diff <- data.frame(pitch = unique(pitch_grouped$pitch_type))
+v_d <- c()
+s_d <- c()
+
+i = 1
+for (pitch in unique(pitch_grouped$pitch_type)) {
+  v_22 <- pitch_grouped %>%
+    filter(game_year == '2022' & pitch_type ==pitch ) %>%
+    select(mean_v, mean_s)
+  v_23 <- pitch_grouped %>%
+    filter(game_year == '2023' & pitch_type ==pitch ) %>%
+    select(mean_v, mean_s)
+  v_dif <- v_23[2] - v_22[2]
+  s_dif <- v_23[3] - v_22[3]
+  v_d[i] <- v_dif
+  s_d[i] <- s_dif
+  i = i+1
+}
+v_d <- unlist(v_d)
+s_d <- unlist(s_d)
+
+pitch_diff$velo_diff <- v_d
+pitch_diff$spin_diff <- s_d
+
+```
+
+
+
+
